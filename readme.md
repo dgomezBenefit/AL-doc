@@ -2092,6 +2092,356 @@ Synchronize is the defaul mode, which means that every time you publish an exten
 "schemaUpdateMode" : "Recreate"
 ```
 
+# **Custom Report**
+
+When developers create reports, they complete the following tasks to establish the report description:
+
+- Assign the report name and ID number
+- Specify data items
+- Design the layout of the report
+
+The report description contains the following components:
+- Properties
+- Triggers
+- Controls
+- Data items
+- Columns
+- Request page
+- Labels
+- Layout
+
+There are two types of report layout
+- Client report definition (RDLC) layout
+- Microsoft Word layouts
+
+
+**Basic struct of a report:**
+```
+report Id MyReport
+{
+    UsageCategory = Administration;
+    ApplicationArea = All;
+
+    dataset
+    {
+        dataitem(DataItemName; SourceTableName)//This dataitem can be one or more columns
+        {
+            column(ColumnName; SourceFieldName)
+            {
+
+            }
+        }
+    }
+
+    requestpage
+    {
+        layout
+        {
+            area(Content)
+            {
+                group(GroupName)
+                {
+                    field(Name; SourceExpression)
+                    {
+                        ApplicationArea = All;
+                    }
+                }
+            }
+        }
+
+        actions //this is inside request page
+        {
+            area(processing)
+            {
+                action(ActionName)
+                {
+                    ApplicationArea = All;
+                }
+            }
+        }
+    }
+
+    var
+        myInt: Integer;
+}
+```
+
+To make a custom report must follow two steps:
+
+* Data Model
+
+    This mean select the correct tables and data source, table relations, keys order, filter, data element, group data, flow fields.
+
+* Report Layout Design 
+
+- **A Data Element it is a Table**
+- **A column can be a table field, variable, expression, const**
+
+You can set a dataitem inside another dataitem, so the report reads all records in the dataitem parent and all records of dataitem indented, including filters and links, in that case the tables are joined.
+This work as a FOR Cycle, where the report read the firs customer and all their sales lines, then the next customer and all their sales lines again.
+Example below:
+```
+dataset
+    {
+        dataitem(Customer;Customer)
+        {
+            dataitem("Sales Line";"Sales Line")
+            {
+                DataItemLinkReference = Customer;
+                DataItemLink =  "Bill-to Customer No." = field("No.");
+            }
+        }
+    }
+```
+Each data item has the DataItemLinkReference and the DataItemLink properties. These properties define a master/detail relationship between two tables.
+
+## **Dataitem Properties:**
+
+- DataItemLinkReference, 
+- DataItemLink, especify a field of each dataitem on wich to base the link.
+- PrintOnlyIfDetail (true/false), especify if print the data in report for the primary when the secondary has not results. (correlates to a left or inner join).
+    - true = inner join.
+    - false = left join.
+
+- DataItemTableView, set a filter to show a result limited
+```
+dataitem(Customer; Customer)
+        {
+            PrintOnlyIfDetail = true;
+            DataItemTableView = where(Blocked=filter(false));
+        }
+```
+
+The following example fetches the No., Name, City, and Balance LCY columns from the Customer table:
+```
+dataitem(Customer; Customer)
+        {
+            column(No; "No.")
+            {
+            }
+            column(Name; Name)
+            {
+            }
+            column(City; City)
+            {
+            }
+            column(BalanceLCY; "Balance (LCY)")
+            {
+            }
+        }
+```
+The next example demonstrates two data items that are not linked or indented,
+so this example has no relation.
+```
+dataitem(Customer; Customer)
+        {
+            column(CustomerNo; "No.")
+            {
+            }
+            column(CustomerName; Name)
+            {
+            }
+        }
+        dataitem(Vendor; Vendor)
+        {
+            column(VendorNo; "No.")
+            {
+            }
+            column(VendorName; Name)
+            {
+            }
+        }
+```
+
+The next example demonstrates two data items that are indented, so this example shows all data related by No.
+So the customer can be repeated with the same data by each entry in the  "Cust. Ledger Entry" of that customer.
+```
+dataset
+    {
+        dataitem(Customer; Customer)
+        {
+            PrintOnlyIfDetail = true; //Show only customer with entries in the "Cust. Ledger Entry" table
+            column(CustomerNo; "No.")
+            {
+            }
+            column(CustomerName; Name)
+            {
+            }
+            dataitem(CustomerLedgers;"Cust. Ledger Entry")
+            {
+                DataItemLinkReference = Customer;
+                DataItemLink = "Customer No." = field("No.");
+                column(CustomerLedgersCustomerNo;"Customer No.")
+                {
+                }
+                column(CustomerLedgersAmountLCY;"Amount (LCY)")
+                {
+                }
+            }
+        }
+    }
+```
+## **Report layout design**
+A report can only have one built-in RDLC report layout and one built-in Word report layout. By default, the built-in RDLC report layout is used when the report is run in the client, unless only a built-in Word report layout exists, in which case, the built-in Word report layout is used.
+
+- **Report definition language (RDL)**
+
+    To create an RDLC layout report, you need to use 
+    Visual Studio Report Designer or Microsoft SQL Server Reporting Services Report Builder.
+
+The system requirements for Business Central list the supported versions:
+
+Report Builder for SQL Server 2016
+
+Visual Studio 2017 or 2019 with Microsoft RDLC Report Designer for Visual Studio or Word.
+
+## Headers and footers in client report definition (RDLC) report layouts have the following limitations:
+
+- From the header, you can't refer to group-specific information in the body.
+
+- You can have only one report header, one body, and one report footer in a report.
+
+- You can have group headers and footers and table headers and footers.
+
+
+**Report Example**
+```
+dataset
+    {
+        dataitem(Customer; Customer)
+        {
+            column(CustomerNo; "No.")
+            {
+            }
+            column(CustomerName; Name)
+            {
+            }
+            column(City; City)
+            {
+            }
+            column(BalanceLCY; "Balance (LCY)")
+            {
+            }
+        }
+    }
+```
+
+Report properties **RDLCLayout** example:
+```
+report 50105 Example_RDLCLayout
+{
+    UsageCategory = ReportsAndAnalysis;
+    ApplicationArea = All;
+    RDLCLayout = 'Example_RDLCLayout.rdl';
+    DefaultLayout = RDLC;
+```
+
+Report properties **WORDLayout** example:
+```
+report 50105 Example_WORDLayout
+{
+    UsageCategory = ReportsAndAnalysis;
+    ApplicationArea = All;
+    WordLayout = 'Example_WORDLayout.docx';
+    DefaultLayout = Word;
+```
+- The **RDLCLayout** property sets the file name and the RDLC layout that is used on a report. The RDLC file will be created in the same folder as the AL object.
+- The **DefaultLayout** property specifies whether the report uses the built-in RDLC or Word report layout by default.
+
+## **Request page**
+
+To launch a Request page is defaul unless the property  **UseRequestPage** has been established in false.
+A Request page always show the next buttons; 'Send to', 'Print', 'Preview', 'Canel'.
+
+You can design the filters on request pages using the following report properties:
+
+- RequestFilterHeading
+
+    This report property sets a caption for the request page tab that is related to a report's data item or an XMLport's table element.
+
+- RequestFilterHeadingML
+
+    This report property sets the text used as a RequestFilterHeading property for a request page tab.
+
+- RequestFilterFields
+
+    This report property specifies which fields are automatically included on the tab of the request page that is related to a report's data item or an XMLport's table element. The user can set filters on these fields.
+
+    ```
+    dataitem(Customer; Customer)
+        {
+            PrintOnlyIfDetail = true;
+            RequestFilterFields = "No.", "Search Name", "Customer Posting Group";
+            ...
+    ```
+    It is recommend that you add fields that end users of the   report will frequently set filters on.
+
+- UseRequestPage
+
+    Sets whether a request page is presented to the user. If UseRequestPage is false, then a request page isn't shown. The user can't choose a sort order or set any filters.
+
+    You can create you own request page, and has the following syntax:
+    ```
+    requestpage
+    {
+        SaveValues = true; // this save the values that user enters on the request page for the next time.
+        layout
+        {
+            area(Content)
+            {
+                group(GroupName)
+                {
+                    field(Name; SourceExpression)
+                    {
+                        ApplicationArea = All;
+
+                    }
+                }
+            }
+        }
+
+        actions
+        {
+            area(processing)
+            {
+                action(ActionName)
+                {
+                    ApplicationArea = All;
+
+                }
+            }
+        }
+    }
+    ```
+
+## **UsageCategory**
+
+In AL code, you would make a page or report searchable from Tell Me by setting the UsageCategory property
+```
+report 50102 Example_DataItems_Join
+{
+    UsageCategory = ReportsAndAnalysis;
+    ApplicationArea = All;
+    AdditionalSearchTerms = 'Customer and Ledgers Report';//This property helps to fin a object more specifically
+}
+```
+Additionale can use:
+- AccessByPermission.
+- ApplicationArea.
+- AdditionalSearchTermsML.
+
+## **Report Triggers**
+
+- OnInitReport - Runs when the report is loaded.
+- OnPreReport - Runs before the report is run but after the RequestPage has been run.
+- OnPostReport - Runs after the report has run but not if the report was stopped manually or by the QUIT method.
+
+These triggers apply to each data item on the report:
+- OnPreDataItem - Runs before the data item is processed but after the associated variable has been initialized.
+- OnAfterGetRecord - Runs when a record has been retrieved from the table.
+- OnPostDataItem - Runs when the data item has been iterated for the last time.
+
+
 
 # Snippets
 * ttable -> basic struct for a table.
@@ -2100,8 +2450,11 @@ Synchronize is the defaul mode, which means that every time you publish an exten
 * tpageext -> basic struct for a extension page.
 * tcodeunit -> basic struct for a codeunit.
 * tprocedure -> create a custom function.
-
+* treport -> create a basic struct to a report.
+* tdataitem -> add a data element to a report.
+* tcolumn -> add a column to data element.
 * tinterface -> create a basic struct for a interface.
+
 
 # Commands
 - Comment selection (Ctrl + K + C)
