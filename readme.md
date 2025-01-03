@@ -2470,7 +2470,8 @@ With Statement Symbols Search |
 https://learn.microsoft.com/es-mx/training/modules/al-statements/4-repetitive |
 
 # Git
-
+-  $ git config --global user.name "John Doe"
+-  $ git config --global user.email johndoe@example.com
 - **pwd** -> show path
 - **cd** -> move to folder
 - **ls** -> show files
